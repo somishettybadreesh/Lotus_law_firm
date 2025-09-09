@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+  .sidebar {
+    min-height: calc(100vh - 56px);
+    background:#121212;
+    color:#cbd5e1;
+  }
+  .sidebar .brand {
+    padding:1rem;
+    border-bottom:1px solid rgba(255,255,255,.08);
+  }
+  .sidebar .nav-link {
+    color:#e2e8f0;
+    border-radius:.5rem;
+  }
+  .sidebar .nav-link:hover, .sidebar .nav-link.active {
+    background:rgba(255,255,255,.08);
+    color:#fff;
+  }
+  .kpi-card .icon {
+    width:42px;height:42px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .kpi-card .stat { font-size:1.3rem; font-weight:700; }
+  .card-hover { transition: transform .15s, box-shadow .2s; }
+  .card-hover:hover { transform: translateY(-2px); box-shadow:0 14px 34px rgba(2,12,27,.08); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row g-3">
+    <!-- Left Sidebar -->
+    <aside class="col-12 col-md-3 col-xl-2 sidebar rounded-3">
+      <div class="brand d-flex align-items-center gap-2">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" height="36" class="rounded">
+        <div>
+          <div class="fw-semibold text-white">Your Company</div>
+          <small class="text-secondary">Billing & Reconciliation</small>
+        </div>
+      </div>
+      <nav class="p-3">
+        <ul class="nav nav-pills flex-column gap-1">
+          <li class="nav-item"><a class="nav-link d-flex align-items-center gap-2 {% if request.endpoint=='dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link d-flex align-items-center gap-2 {% if request.endpoint=='list_clients' %}active{% endif %}" href="{{ url_for('list_clients') }}"><i class="bi bi-people"></i> Clients</a></li>
+          <li class="nav-item"><a class="nav-link d-flex align-items-center gap-2 {% if request.endpoint=='bills' %}active{% endif %}" href="{{ url_for('bills') }}"><i class="bi bi-receipt"></i> Bills</a></li>
+          <li class="nav-item"><a class="nav-link d-flex align-items-center gap-2 {% if request.endpoint=='receipts' %}active{% endif %}" href="{{ url_for('receipts') }}"><i class="bi bi-cash-coin"></i> Receipts</a></li>
+          <li class="nav-item"><a class="nav-link d-flex align-items-center gap-2" href="#"><i class="bi bi-briefcase"></i> Cases</a></li>
+          <li class="nav-item"><a class="nav-link d-flex align-items-center gap-2" href="#"><i class="bi bi-calendar-event"></i> Schedules</a></li>
+        </ul>
+        <hr class="border-secondary-subtle">
+        <div class="small">
+          <div class="text-secondary">Contact</div>
+          <div>support@company.com</div>
+          <div>+91-XXXXXXXXXX</div>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <main class="col-12 col-md-9 col-xl-7">
+      <!-- Search + Header -->
+      <div class="d-flex flex-wrap align-items-center justify-content-between mb-2">
+        <h4 class="mb-2 mb-md-0">Overview</h4>
+        <form class="d-flex" role="search" action="{{ url_for('dashboard') }}" method="get">
+          <input class="form-control form-control-sm" type="search" name="client" placeholder="Search client or bill...">
+        </form>
+      </div>
+
+      <!-- KPI row -->
+      <div class="row g-3">
+        <div class="col-6 col-sm-6 col-lg-3">
+          <a href="{{ url_for('list_clients') }}" class="text-decoration-none text-reset">
+            <div class="card kpi-card card-hover">
+              <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon bg-primary-subtle text-primary"><i class="bi bi-people"></i></div>
+                <div>
+                  <div class="small text-secondary">Clients</div>
+                  <div class="stat">{{ (clients|length) if clients is defined else '-' }}</div>
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+        <div class="col-6 col-sm-6 col-lg-3">
+          <a href="{{ url_for('bills') }}" class="text-decoration-none text-reset">
+            <div class="card kpi-card card-hover">
+              <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon bg-warning-subtle text-warning"><i class="bi bi-receipt"></i></div>
+                <div>
+                  <div class="small text-secondary">Bills</div>
+                  <div class="stat">{{ totals.total_bills|round(0) if totals is defined else '-' }}</div>
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+        <div class="col-6 col-sm-6 col-lg-3">
+          <a href="{{ url_for('receipts') }}" class="text-decoration-none text-reset">
+            <div class="card kpi-card card-hover">
+              <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon bg-success-subtle text-success"><i class="bi bi-cash-coin"></i></div>
+                <div>
+                  <div class="small text-secondary">Receipts</div>
+                  <div class="stat">{{ totals.total_paid|round(0) if totals is defined else '-' }}</div>
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+        <div class="col-6 col-sm-6 col-lg-3">
+          <a href="{{ url_for('dashboard') }}" class="text-decoration-none text-reset">
+            <div class="card kpi-card card-hover">
+              <div class="card-body d-flex align-items-center gap-3">
+                <div class="icon bg-info-subtle text-info"><i class="bi bi-graph-up"></i></div>
+                <div>
+                  <div class="small text-secondary">Reconciliation</div>
+                  <div class="stat">{{ totals.total_balance|round(0) if totals is defined else '-' }}</div>
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <!-- Dashboard preview -->
+      <div class="card mt-3 card-hover">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div class="fw-semibold">Dashboard snapshot</div>
+          <a class="small" href="{{ url_for('dashboard') }}">See all</a>
+        </div>
+        <div class="card-body">
+          <div class="row text-center">
+            <div class="col-6 col-md-3">
+              <div class="small text-secondary">Pending</div>
+              <div class="fs-5 fw-semibold">{{ totals.count_pending if totals is defined else '-' }}</div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="small text-secondary">Paid</div>
+              <div class="fs-5 fw-semibold">{{ totals.count_paid if totals is defined else '-' }}</div>
+            </div>
+            <div class="col-6 col-md-3 mt-3 mt-md-0">
+              <div class="small text-secondary">Overpaid</div>
+              <div class="fs-5 fw-semibold">{{ totals.count_overpaid if totals is defined else '-' }}</div>
+            </div>
+            <div class="col-6 col-md-3 mt-3 mt-md-0">
+              <div class="small text-secondary">Balance</div>
+              <div class="fs-5 fw-semibold">₹ {{ "%.2f"|format(totals.total_balance) if totals is defined else '-' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent actions -->
+      <div class="card mt-3 card-hover">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div class="fw-semibold">Quick actions</div>
+        </div>
+        <div class="card-body d-flex flex-wrap gap-2">
+          <a class="btn btn-outline-primary btn-sm" href="{{ url_for('bills') }}"><i class="bi bi-plus-circle me-1"></i>New Bill</a>
+          <a class="btn btn-outline-success btn-sm" href="{{ url_for('receipts') }}"><i class="bi bi-plus-square me-1"></i>New Receipt</a>
+          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('export_reconciliation', fmt='csv') }}"><i class="bi bi-download me-1"></i>Export CSV</a>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right rail (Schedules / Notices / Cases later) -->
+    <aside class="col-12 col-xl-3">
+      <div class="card card-hover">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div class="fw-semibold">Schedules</div>
+          <a class="small" href="#">See all</a>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between small py-2 border-bottom">
+            <div>
+              <div class="fw-semibold">Monthly Review</div>
+              <div class="text-secondary">Tomorrow 11:00 AM</div>
+            </div>
+            <div class="text-secondary"><i class="bi bi-calendar-event"></i></div>
+          </div>
+          <div class="d-flex justify-content-between small py-2">
+            <div>
+              <div class="fw-semibold">Team Standup</div>
+              <div class="text-secondary">Daily 10:00 AM</div>
+            </div>
+            <div class="text-secondary"><i class="bi bi-clock"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-3 card-hover">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div class="fw-semibold">Notice Board</div>
+          <a class="small" href="#">See all</a>
+        </div>
+        <div class="card-body small">
+          <div class="d-flex gap-2 align-items-start mb-2">
+            <div class="text-primary"><i class="bi bi-info-circle"></i></div>
+            <div>
+              New GST format reminder. Ensure client GST/PAN are updated.
+            </div>
+          </div>
+          <div class="d-flex gap-2 align-items-start">
+            <div class="text-success"><i class="bi bi-check-circle"></i></div>
+            <div>
+              Reconciliation export supports uppercase or capitalized headers.
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+{% endblock %}

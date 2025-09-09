@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Edit Receipt</h1>
+    <a class="btn btn-outline-primary" href="{{ url_for('receipts') }}">Back to Receipts</a>
+  </div>
+
+  <form method="POST" class="needs-validation" novalidate>
+    <div class="row g-4">
+      <!-- Left column -->
+      <div class="col-lg-6">
+        <div class="mb-3">
+          <label for="client_id" class="form-label">Client</label>
+          <select id="client_id" name="client_id" class="form-select" required>
+            <option value="">Select client…</option>
+            {% for c in clients %}
+              <option value="{{ c.id }}" {% if c.id == r.client_id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Changing the client will refresh the Bill No list.</div>
+          <div class="invalid-feedback">Client is required.</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="bill_no" class="form-label">Bill No</label>
+          <select id="bill_no" name="bill_no" class="form-select" required>
+            <option value="">Select bill…</option>
+            {% for bn, cid in bills_for_dropdown %}
+              {% if cid == r.client_id %}
+                <option value="{{ bn }}" {% if bn == r.bill_no %}selected{% endif %}>{{ bn }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+          <div class="invalid-feedback">Bill No is required.</div>
+        </div>
+
+        <!-- Amounts row -->
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="paid_amount" class="form-label">Paid Amount</label>
+            <input type="number" step="0.01" min="0" class="form-control" id="paid_amount" name="paid_amount"
+                   value="{{ (paid_amount_current or 0) | round(2) }}" required>
+            <div class="invalid-feedback">Enter a valid amount.</div>
+          </div>
+          <div class="col-md-6">
+            <label for="tds_amt" class="form-label">TDS Amount</label>
+            <input type="number" step="0.01" min="0" class="form-control" id="tds_amt" name="tds_amt"
+                   value="{{ (r.tds_amt or 0) | round(2) }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Total (TDS + Paid)</label>
+            <input type="text" class="form-control" id="total_display" value="0.00" readonly>
+          </div>
+        </div>
+
+        <div class="mb-3 mt-3">
+          <label for="receipt_date" class="form-label">Receipt Date</label>
+          <input type="date" class="form-control" id="receipt_date" name="receipt_date"
+                 value="{{ r.receipt_date.isoformat() if r.receipt_date else '' }}" required>
+          <div class="invalid-feedback">Please choose a date.</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="utr_details" class="form-label">UTR / Reference</label>
+          <input type="text" class="form-control" id="utr_details" name="utr_details"
+                 value="{{ r.utr_details or '' }}">
+        </div>
+
+        <div class="mb-3">
+          <label for="receipt_ref" class="form-label">Receipt Ref (optional)</label>
+          <input type="text" class="form-control" id="receipt_ref" name="receipt_ref"
+                 value="{{ r.receipt_ref or '' }}">
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div class="col-lg-6">
+        <div class="mb-3">
+          <label for="mode" class="form-label">Mode</label>
+          <select id="mode" name="mode" class="form-select">
+            <option value="">Select…</option>
+            {% set modes = ['NEFT','RTGS','IMPS','Cheque','Cash','UPI','Other'] %}
+            {% for m in modes %}
+              <option value="{{ m }}" {% if r.mode and r.mode.upper()==m %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="remarks" class="form-label">Remarks</label>
+          <textarea id="remarks" name="remarks" class="form-control" rows="12">{{ r.remarks or '' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4">
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+      <a href="{{ url_for('receipts') }}" class="btn btn-outline-primary">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Bootstrap validation
+  (function () {
+    'use strict';
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function (form) {
+      form.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) { event.preventDefault(); event.stopPropagation(); }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  })();
+
+  // Enhance selects with Tom Select
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.TomSelect) {
+      new TomSelect('#client_id', { allowEmptyOption: true, maxOptions: 500 });
+      new TomSelect('#bill_no',   { allowEmptyOption: true, maxOptions: 500 });
+      new TomSelect('#mode',      { allowEmptyOption: true, create: false });
+    }
+  });
+
+  // Fetch bills by client and repopulate bill_no select
+  async function refreshBills(clientId, selectedBill) {
+    const billEl = document.querySelector('#bill_no');
+    const ts = billEl && billEl.tomselect ? billEl.tomselect : null;
+    if (ts) ts.clearOptions();
+    billEl.innerHTML = '<option value="">Select bill…</option>';
+
+    if (!clientId) { if (ts) ts.sync(); return; }
+    try {
+      const resp = await fetch(`{{ url_for('api_bills_by_client', client_id=0) }}`.replace('/0', `/${clientId}`));
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      (data.bills || []).forEach(bn => {
+        const opt = new Option(bn, bn, false, bn === selectedBill);
+        billEl.add(opt);
+      });
+      if (ts) ts.sync();
+    } catch (e) {
+      console.error('Could not load bills', e);
+    }
+  }
+
+  // Wire client change -> refresh bill list
+  document.querySelector('#client_id').addEventListener('change', function () {
+    refreshBills(this.value, null);
+  });
+
+  // Compute total (TDS + Paid)
+  function updateTotal() {
+    const tds  = parseFloat(document.getElementById('tds_amt').value || '0');
+    const paid = parseFloat(document.getElementById('paid_amount').value || '0');
+    document.getElementById('total_display').value = (tds + paid).toFixed(2);
+  }
+  document.getElementById('tds_amt').addEventListener('input', updateTotal);
+  document.getElementById('paid_amount').addEventListener('input', updateTotal);
+  updateTotal();
+
+  // Initialize bill list for the current client on load
+  refreshBills(document.getElementById('client_id').value, "{{ r.bill_no or '' }}");
+</script>
+{% endblock %}

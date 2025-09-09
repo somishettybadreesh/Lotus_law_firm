@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">{% if client %}Edit Client{% else %}Add Client{% endif %}</h1>
+    <!-- Clients: Import button -->
+    
+
+  </div>
+
+  <!-- Vertical form with labels above inputs -->
+  <form method="post"
+        action="{{ url_for('add_client' if not client else 'edit_client', cid=client.id if client else None) }}"
+        class="needs-validation" novalidate>
+    <div class="row g-4">
+      <!-- Left column -->
+      <div class="col-lg-6">
+        <div class="mb-3">
+          <label for="name" class="form-label">Client name</label>
+          <input id="name" name="name" class="form-control"
+                 value="{{ client.name if client else '' }}" required>
+          <div class="invalid-feedback">Client name is required.</div>
+        </div>
+
+        <div class="mb-1">
+          <label for="address" class="form-label">Address</label>
+          <textarea id="address" name="address" class="form-control" rows="5"
+                    placeholder="Address">{{ client.address if client else '' }}</textarea>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div class="col-lg-6">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="gst_no" class="form-label">GST No.</label>
+            <input id="gst_no" name="gst_no" class="form-control"
+                   value="{{ client.gst_no if client else '' }}">
+          </div>
+          <div class="col-md-6">
+            <label for="pan_no" class="form-label">PAN No.</label>
+            <input id="pan_no" name="pan_no" class="form-control"
+                   value="{{ client.pan_no if client else '' }}">
+          </div>
+          <div class="col-12">
+            <label for="remarks" class="form-label">Remarks</label>
+            <textarea id="remarks" name="remarks" class="form-control" rows="5"
+                      placeholder="Remarks">{{ client.remarks if client else '' }}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if client %}
+      <input type="hidden" name="cid" value="{{ client.id }}">
+    {% endif %}
+
+    <div class="d-flex gap-2 mt-4">
+      <button type="submit" class="btn btn-primary">
+        {% if client %}Update Client{% else %}Save Client{% endif %}
+      </button>
+      <a href="{{ url_for('list_clients') }}" class="btn btn-outline-primary">Cancel</a>
+    </div>
+  </form>
+
+  <hr class="my-4">
+
+  <h3>All Clients</h3>
+
+  <input id="clientSearch" class="form-control mb-2" placeholder="Search by any field">
+  <table class="table table-sm table-striped">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Address</th>
+        <th>GST No.</th>
+        <th>PAN No.</th>
+        <th>Remarks</th>
+        <th style="width:150px;"></th>
+      </tr>
+    </thead>
+    <tbody id="clientTable">
+      {% for c in clients %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td>
+          {% set addr = c.address or '' %}
+          {% if addr|length > 15 %}
+            {{ addr[:15] }}…
+            <button type="button" class="btn btn-sm btn-link p-0"
+                    data-bs-toggle="popover" data-bs-trigger="focus"
+                    title="Address" data-bs-content="{{ addr|e }}">view</button>
+          {% else %}
+            {{ addr }}
+          {% endif %}
+        </td>
+        <td>
+          {% set gst = c.gst_no or '' %}
+          {% if gst|length > 30 %}
+            {{ gst[:30] }}…
+            <button type="button" class="btn btn-sm btn-link p-0"
+                    data-bs-toggle="popover" data-bs-trigger="focus"
+                    title="GST No." data-bs-content="{{ gst|e }}">view</button>
+          {% else %}
+            {{ gst }}
+          {% endif %}
+        </td>
+        <td>{{ c.pan_no or '' }}</td>
+        <td>
+          {% set rmk = c.remarks or '' %}
+          {% if rmk|length > 10 %}
+            {{ rmk[:10] }}…
+            <button type="button" class="btn btn-sm btn-link p-0"
+                    data-bs-toggle="popover" data-bs-trigger="focus"
+                    title="Remarks" data-bs-content="{{ rmk|e }}">view</button>
+          {% else %}
+            {{ rmk }}
+          {% endif %}
+        </td>
+        <td>
+          <a class="btn btn-sm btn-outline-primary me-1" href="{{ url_for('edit_client', cid=c.id) }}">Edit</a>
+          <form method="post" action="{{ url_for('delete_row', table='client', row_id=c.id) }}"
+                class="d-inline" onsubmit="return confirm('Delete client?')">
+            <button class="btn btn-sm btn-outline-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  // Bootstrap 5 validation
+  (function () {
+    'use strict';
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function (form) {
+      form.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) { event.preventDefault(); event.stopPropagation(); }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  })(); 
+
+  // Search across all visible text in the row
+  const cs = document.getElementById('clientSearch');
+  cs.addEventListener('input', () => {
+    const q = (cs.value || '').toLowerCase();
+    document.querySelectorAll('#clientTable tr').forEach(tr => {
+      const text = tr.innerText.toLowerCase();
+      tr.style.display = text.includes(q) ? '' : 'none';
+    });
+  });
+
+  // Enable Bootstrap popovers for long fields
+  document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => {
+    new bootstrap.Popover(el, { container: 'body', html: false });
+  });
+</script>
+{% endblock %}

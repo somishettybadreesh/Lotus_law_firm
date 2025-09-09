@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3>Add Receipt</h3>
+
+<!-- Receipts: Import button -->
+<form method="post" action="{{ url_for('import_receipts_now') }}" enctype="multipart/form-data"
+      class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <input type="file" name="file" accept=".csv,.xlsx,.xls"
+         class="form-control form-control-sm w-auto" required>
+  <button class="btn btn-sm btn-outline-primary">Import Receipts</button>
+  <span class="text-muted small">Columns: Client, Bill No, Receipt Date, Paid, TDS, UTR, Mode, Remarks, Receipt Ref</span>
+</form>
+
+<form method="post" class="row g-2" id="receiptForm">
+  <div class="col-md-3">
+    <label class="form-label" for="clientCombobox">Client</label>
+    <input id="clientCombobox" class="form-control mb-1" type="text"
+           placeholder="Type to find client" role="combobox"
+           aria-autocomplete="list" aria-haspopup="listbox"
+           aria-expanded="false" aria-controls="clientListbox"
+           aria-activedescendant="" autocomplete="off">
+    <div id="clientListbox" role="listbox" class="list-group" style="max-height:180px; overflow:auto;" hidden>
+      {% for c in clients %}
+      <button type="button" class="list-group-item list-group-item-action"
+              role="option" id="client-opt-{{ c.id }}"
+              data-id="{{ c.id }}" aria-selected="false">{{ c.name }}</button>
+      {% endfor %}
+    </div>
+    <input type="hidden" name="client_id" id="clientHidden" required>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label" for="billCombobox">Bill No</label>
+    <input id="billCombobox" class="form-control mb-1" type="text"
+           placeholder="Type to find bill no" role="combobox"
+           aria-autocomplete="list" aria-haspopup="listbox"
+           aria-expanded="false" aria-controls="billListbox"
+           aria-activedescendant="" autocomplete="off">
+    <div id="billListbox" role="listbox" class="list-group" style="max-height:180px; overflow:auto;" hidden>
+      {% for bn, cid in bills_for_dropdown %}
+      <button type="button" class="list-group-item list-group-item-action"
+              role="option" id="bill-opt-{{ loop.index }}"
+              data-bill="{{ bn }}" aria-selected="false">{{ bn }}</button>
+      {% endfor %}
+    </div>
+    <input type="hidden" name="bill_no" id="billHidden" required>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Receipt Amount</label>
+    <input type="number" step="0.01" name="paid_amount" id="paidInput" class="form-control" value="0">
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">TDS Amount</label>
+    <input type="number" name="tds_amt" id="tdsInput" class="form-control" value="0">
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Total Amount (auto)</label>
+    <input type="number" id="collectionAuto" class="form-control" value="0" readonly>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Receipt Date</label>
+    <input type="date" name="receipt_date" class="form-control" required>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">UTR Details</label>
+    <input name="utr_details" class="form-control">
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Receipt Ref</label>
+    <input name="receipt_ref" class="form-control">
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Mode</label>
+    <input name="mode" class="form-control" placeholder="NEFT/IMPS/Cash/etc">
+  </div>
+
+  <div class="col-md-9">
+    <label class="form-label">Remarks</label>
+    <input name="remarks" class="form-control">
+  </div>
+
+  <div class="col-12">
+    <button class="btn btn-primary">Save Receipt</button>
+  </div>
+</form>
+
+<div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+  <h3 class="mb-0">All Receipts</h3>
+  <div class="d-flex gap-2">
+    <form method="get" action="{{ url_for('receipts') }}" class="d-flex gap-3">
+      <input type="text"
+             class="form-control form-control-sm"
+             style="width: 275px;"
+             name="q"
+             value="{{ qtext or '' }}"
+             placeholder="Search receipts (Client, UTR, or Bill No)">
+      <input type="hidden" name="per_page" value="{{ pagination.per_page }}">
+      <button class="btn btn-primary" style="width: 70px;">Search</button>
+    </form>
+    <a class="btn btn-outline-secondary"
+       href="{{ url_for('export_receipts', fmt='xlsx', q=qtext or '') }}">
+       Export Excel
+    </a>
+  </div>
+</div>
+
+
+<div class="table-responsive">
+  <table class="table table-sm table-striped align-middle">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Receipt Ref</th>
+        <th>Client</th>
+        <th>Bill No</th>
+        <th>Bill Amount</th>
+        <th>TDS</th>
+        <th>Collection</th>
+        <th>Status</th>
+        <th>UTR</th>
+        <th>Mode</th>
+        <th>Remark</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="recTable">
+      {% for r, bill_amount, status in receipts %}
+      <tr>
+        <td>{{ r.receipt_date }}</td>
+        <td>{{ r.receipt_ref }}</td>
+        <td>{{ r.client.name }}</td>
+        <td>{{ r.bill_no }}</td>
+        <td>{{ bill_amount is not none and ("%.2f"|format(bill_amount)) or "-" }}</td>
+        <td>{{ "%.2f"|format(r.tds_amt or 0) }}</td>
+        <td>{{ "%.2f"|format(r.collection_amount) }}</td>
+        <td>
+          {% if status %}
+            <span class="badge {% if status=='Paid' %}bg-success{% elif status=='Pending' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ status }}</span>
+          {% else %}-{% endif %}
+        </td>
+        <td>{{ r.utr_details }}</td>
+        <td>{{ r.mode }}</td>
+        <td>
+          {% set rmk = r.remarks or '' %}
+          {% if rmk|length > 25 %}
+            {{ rmk[:25] }}…
+            <button type="button" class="btn btn-sm btn-link p-0"
+                    data-bs-toggle="popover" data-bs-trigger="focus"
+                    title="Remarks" data-bs-content="{{ rmk|e }}">view</button>
+          {% else %}
+            {{ rmk }}
+          {% endif %}
+        </td>
+        <td style="white-space: nowrap;">
+          <a class="btn btn-sm btn-outline-primary me-1" href="{{ url_for('edit_receipt', rid=r.id) }}">Edit</a>
+          <form method="post" action="{{ url_for('delete_row', table='receipt', row_id=r.id) }}" class="d-inline" onsubmit="return confirm('Delete receipt?')">
+            <button class="btn btn-sm btn-outline-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="d-flex align-items-center justify-content-between">
+  <div class="text-muted">Showing {{ pagination.start_idx }}–{{ pagination.end_idx }} out of {{ pagination.total }}</div>
+  <div class="d-flex align-items-center gap-3">
+    <form method="get" class="d-flex align-items-center">
+      <input type="hidden" name="q" value="{{ qtext or '' }}">
+      <span class="me-2">Items per page:</span>
+      <select name="per_page" class="form-select form-select-sm" onchange="this.form.submit()">
+        {% for n in [5,15,25,50,100] %}
+          <option value="{{ n }}" {% if n == pagination.per_page %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+      <input type="hidden" name="page" value="1">
+    </form>
+    <nav aria-label="Receipts pages">
+      <ul class="pagination mb-0">
+        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+          <a class="page-link" href="{{ pagination.has_prev and url_for('receipts', page=pagination.page-1, per_page=pagination.per_page, q=qtext or '') or '#' }}">Previous</a>
+        </li>
+        {% for p in range(1, pagination.pages + 1) %}
+          <li class="page-item {% if p == pagination.page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for('receipts', page=p, per_page=pagination.per_page, q=qtext or '') }}">{{ p }}</a>
+          </li>
+        {% endfor %}
+        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+          <a class="page-link" href="{{ pagination.has_next and url_for('receipts', page=pagination.page+1, per_page=pagination.per_page, q=qtext or '') or '#' }}">Next</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div>
+
+<script>
+// Auto compute collection amount = TDS + Paid
+const tdsInput = document.getElementById('tdsInput');
+const paidInput = document.getElementById('paidInput');
+const collAuto = document.getElementById('collectionAuto');
+function updateCollection() {
+  const t = parseFloat(tdsInput.value || 0);
+  const p = parseFloat(paidInput.value || 0);
+  collAuto.value = (t + p).toFixed(2);
+}
+tdsInput.addEventListener('input', updateCollection);
+paidInput.addEventListener('input', updateCollection);
+updateCollection();
+
+// Enable Bootstrap popovers
+document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el=>{
+  new bootstrap.Popover(el, {container:'body', html:false});
+});
+
+// Accessible Client combobox
+(function(){
+  const input = document.getElementById('clientCombobox');
+  const list  = document.getElementById('clientListbox');
+  const hid   = document.getElementById('clientHidden');
+  if (!input || !list || !hid) return;
+
+  let activeIndex = -1, visible = [];
+  const optionsAll = () => Array.from(list.querySelectorAll('[role="option"]'));
+
+  function openList(){ list.hidden=false; input.setAttribute('aria-expanded','true'); rebuild(); }
+  function closeList(){ list.hidden=true; input.setAttribute('aria-expanded','false'); setActive(-1); }
+  function setActive(i){
+    visible.forEach(o=>o.classList.remove('active'));
+    activeIndex=i;
+    if(i>=0 && i<visible.length){
+      const el=visible[i]; el.classList.add('active'); input.setAttribute('aria-activedescendant', el.id);
+      const r=el.getBoundingClientRect(), lr=list.getBoundingClientRect();
+      if(r.top<lr.top) list.scrollTop-= (lr.top-r.top);
+      if(r.bottom>lr.bottom) list.scrollTop+= (r.bottom-lr.bottom);
+    }else{ input.removeAttribute('aria-activedescendant'); }
+  }
+  function rebuild(){
+    const q=(input.value||'').toLowerCase(); visible=[];
+    optionsAll().forEach(btn=>{
+      const show=btn.textContent.toLowerCase().includes(q);
+      btn.style.display=show?'':'none';
+      btn.setAttribute('aria-selected','false');
+      if(show) visible.push(btn);
+    });
+    setActive(visible.length?0:-1);
+  }
+  function commit(btn){
+    if(!btn) return;
+    hid.value=btn.dataset.id; input.value=btn.textContent.trim();
+    visible.forEach(o=>o.setAttribute('aria-selected', o===btn?'true':'false'));
+    closeList();
+  }
+  input.addEventListener('input', ()=>{ openList(); rebuild(); });
+  input.addEventListener('focus', openList);
+  input.addEventListener('blur', ()=> setTimeout(()=>{ if(!list.contains(document.activeElement)) closeList(); }, 120));
+  input.addEventListener('keydown', e=>{
+    if(e.key==='ArrowDown'){ e.preventDefault(); if(list.hidden) openList(); if(visible.length) setActive(Math.min(activeIndex+1, visible.length-1)); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); if(visible.length) setActive(Math.max(activeIndex-1, 0)); }
+    else if(e.key==='Enter'){ if(!list.hidden && activeIndex>=0){ e.preventDefault(); commit(visible[activeIndex]); } }
+    else if(e.key==='Escape'){ closeList(); }
+  });
+  list.addEventListener('mousedown', e=>e.preventDefault());
+  list.addEventListener('click', e=>{ const btn=e.target.closest('[role="option"]'); if(btn) commit(btn); });
+})();
+
+// Accessible Bill combobox
+(function(){
+  const input = document.getElementById('billCombobox');
+  const list  = document.getElementById('billListbox');
+  const hid   = document.getElementById('billHidden');
+  if (!input || !list || !hid) return;
+
+  let activeIndex = -1, visible = [];
+  const optionsAll = () => Array.from(list.querySelectorAll('[role="option"]'));
+
+  function openList(){ list.hidden=false; input.setAttribute('aria-expanded','true'); rebuild(); }
+  function closeList(){ list.hidden=true; input.setAttribute('aria-expanded','false'); setActive(-1); }
+  function setActive(i){
+    visible.forEach(o=>o.classList.remove('active'));
+    activeIndex=i;
+    if(i>=0 && i<visible.length){
+      const el=visible[i]; el.classList.add('active'); input.setAttribute('aria-activedescendant', el.id);
+      const r=el.getBoundingClientRect(), lr=list.getBoundingClientRect();
+      if(r.top<lr.top) list.scrollTop-= (lr.top-r.top);
+      if(r.bottom>lr.bottom) list.scrollTop+= (r.bottom-lr.bottom);
+    }else{ input.removeAttribute('aria-activedescendant'); }
+  }
+  function rebuild(){
+    const q=(input.value||'').toLowerCase(); visible=[];
+    optionsAll().forEach(btn=>{
+      const show=btn.textContent.toLowerCase().includes(q);
+      btn.style.display=show?'':'none';
+      btn.setAttribute('aria-selected','false');
+      if(show) visible.push(btn);
+    });
+    setActive(visible.length?0:-1);
+  }
+  function commit(btn){
+    if(!btn) return;
+    hid.value=btn.dataset.bill; input.value=btn.textContent.trim();
+    visible.forEach(o=>o.setAttribute('aria-selected', o===btn?'true':'false'));
+    closeList();
+  }
+  input.addEventListener('input', ()=>{ openList(); rebuild(); });
+  input.addEventListener('focus', openList);
+  input.addEventListener('blur', ()=> setTimeout(()=>{ if(!list.contains(document.activeElement)) closeList(); }, 120));
+  input.addEventListener('keydown', e=>{
+    if(e.key==='ArrowDown'){ e.preventDefault(); if(list.hidden) openList(); if(visible.length) setActive(Math.min(activeIndex+1, visible.length-1)); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); if(visible.length) setActive(Math.max(activeIndex-1, 0)); }
+    else if(e.key==='Enter'){ if(!list.hidden && activeIndex>=0){ e.preventDefault(); commit(visible[activeIndex]); } }
+    else if(e.key==='Escape'){ closeList(); }
+  });
+  list.addEventListener('mousedown', e=>e.preventDefault());
+  list.addEventListener('click', e=>{ const btn=e.target.closest('[role="option"]'); if(btn) commit(btn); });
+})();
+</script>
+
+<style>
+  #billListbox .list-group-item:hover { background:#f2f6ff; }
+</style>
+
+{% endblock %}

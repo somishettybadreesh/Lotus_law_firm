@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>Add Bill</h3>
+<!-- Bills: Import button -->
+<form method="post" action="{{ url_for('import_bills_now') }}" enctype="multipart/form-data"
+      class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <input type="file" name="file" accept=".csv,.xlsx,.xls"
+         class="form-control form-control-sm w-auto" required>
+  <button class="btn btn-sm btn-outline-primary">Import Bills</button>
+  <span class="text-muted small">Columns: Client, Bill No, Bill Date, Amount, Description, Remarks, Subject</span>
+</form>
+
+<form method="post" class="row g-2" id="billForm">
+
+
+  <div class="col-md-3">
+    <label class="form-label" for="billClientCombobox">Client</label>
+    <input id="billClientCombobox" class="form-control mb-1" type="text"
+           placeholder="Type to find client" role="combobox"
+           aria-autocomplete="list" aria-haspopup="listbox"
+           aria-expanded="false" aria-controls="billClientListbox"
+           aria-activedescendant="" autocomplete="off">
+    <div id="billClientListbox" role="listbox" class="list-group" style="max-height:180px; overflow:auto;" hidden>
+      {% for c in clients %}
+      <button type="button" class="list-group-item list-group-item-action"
+              role="option" id="bill-client-opt-{{ c.id }}"
+              data-id="{{ c.id }}" aria-selected="false">{{ c.name }}</button>
+      {% endfor %}
+    </div>
+    <input type="hidden" name="client_id" id="billClientHidden" required>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Bill No</label>
+    <input name="bill_no" class="form-control" required>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Bill Date</label>
+    <input type="date" name="bill_date" class="form-control" required>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Amount</label>
+    <input type="number" step="0.01" name="amount" class="form-control" required>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Subject</label>
+    <input name="Subject" class="form-control">
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Description</label>
+    <input name="description" class="form-control">
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label">Remarks</label>
+    <input name="remarks" class="form-control">
+  </div>
+
+  <div class="col-12">
+    <button class="btn btn-primary">Save Bill</button>
+  </div>
+</form>
+
+<div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+  <h3 class="mb-0">All Bills</h3>
+  <div class="d-flex gap-2">
+    <form method="get" action="{{ url_for('bills') }}" class="d-flex gap-2">
+      <input type="text" class="form-control form-control-sm" name="q"
+             value="{{ qtext or '' }}" placeholder="Search bills (Bill No or Client)">
+      <input type="hidden" name="per_page" value="{{ pagination.per_page }}">
+      <button class="btn btn-sm btn-primary">Search</button>
+    </form>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('export_bills', fmt='csv', q=qtext or '') }}">Export CSV</a>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('export_bills', fmt='xlsx', q=qtext or '') }}">Export Excel</a>
+  </div>
+</div>
+
+
+<div class="table-responsive">
+  <table class="table table-sm table-striped align-middle">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Bill No</th>
+        <th>Client</th>
+        <th>Amount</th>
+        <th>Subject</th>
+        <th>Description</th>
+        <th>Remarks</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="billTable">
+      {% for b in bills %}
+      <tr>
+        <td>{{ b.bill_date }}</td>
+        <td>{{ b.bill_no }}</td>
+        <td>{{ b.client.name }}</td>
+        <td>{{ "%.2f"|format(b.amount) }}</td>
+
+        <td>
+          {% set desc = b.description or '' %}
+          {% if desc|length > 25 %}
+            {{ desc[:25] }}…
+            <button type="button" class="btn btn-sm btn-link p-0"
+                    data-bs-toggle="popover" data-bs-trigger="focus"
+                    title="Description" data-bs-content="{{ desc|e }}">view</button>
+          {% else %}
+            {{ desc }}
+          {% endif %}
+        </td>
+
+        <td>
+          {% set rem = b.remarks or '' %}
+          {% if rem|length > 25 %}
+            {{ rem[:25] }}…
+            <button type="button" class="btn btn-sm btn-link p-0"
+                    data-bs-toggle="popover" data-bs-trigger="focus"
+                    title="Remarks" data-bs-content="{{ rem|e }}">view</button>
+          {% else %}
+            {{ rem }}
+          {% endif %}
+        </td>
+
+        <td>{{ b.Subject or '' }}</td>
+
+        <td style="white-space: nowrap;">
+          <a class="btn btn-sm btn-outline-primary me-1" href="{{ url_for('edit_bill', bid=b.id) }}">Edit</a>
+          <form method="post" action="{{ url_for('delete_row', table='bill', row_id=b.id) }}" class="d-inline" onsubmit="return confirm('Delete bill?')">
+            <button class="btn btn-sm btn-outline-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="d-flex align-items-center justify-content-between">
+  <div class="text-muted">Showing {{ pagination.start_idx }}–{{ pagination.end_idx }} out of {{ pagination.total }}</div>
+  <div class="d-flex align-items-center gap-3">
+    <form method="get" class="d-flex align-items-center">
+      <input type="hidden" name="q" value="{{ qtext or '' }}">
+      <span class="me-3">Items per page:</span>
+      <select name="per_page" class="form-select form-select-sm" onchange="this.form.submit()">
+        {% for n in [15,25,50,100] %}
+          <option value="{{ n }}" {% if n == pagination.per_page %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+      <input type="hidden" name="page" value="1">
+    </form>
+    <nav aria-label="Bills pages">
+      <ul class="pagination mb-0">
+        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+          <a class="page-link"
+             href="{{ pagination.has_prev and url_for('bills', page=pagination.page-1, per_page=pagination.per_page, q=qtext or '') or '#' }}">Previous</a>
+        </li>
+        {% for p in range(1, pagination.pages + 1) %}
+          <li class="page-item {% if p == pagination.page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for('bills', page=p, per_page=pagination.per_page, q=qtext or '') }}">{{ p }}</a>
+          </li>
+        {% endfor %}
+        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+          <a class="page-link"
+             href="{{ pagination.has_next and url_for('bills', page=pagination.page+1, per_page=pagination.per_page, q=qtext or '') or '#' }}">Next</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div>
+
+<style>
+  #billClientListbox .list-group-item:hover { background:#f2f6ff; }
+</style>
+
+<script>
+// Accessible client combobox for Add Bill
+(function(){
+  const input = document.getElementById('billClientCombobox');
+  const list  = document.getElementById('billClientListbox');
+  const hid   = document.getElementById('billClientHidden');
+  if (!input || !list || !hid) return;
+
+  let activeIndex = -1, visible = [];
+  const optsAll = () => Array.from(list.querySelectorAll('[role="option"]'));
+
+  function openList(){ list.hidden=false; input.setAttribute('aria-expanded','true'); rebuildVisible(); }
+  function closeList(){ list.hidden=true; input.setAttribute('aria-expanded','false'); setActive(-1); }
+  function setActive(i){
+    visible.forEach(o=>o.classList.remove('active'));
+    activeIndex=i;
+    if(i>=0 && i<visible.length){
+      const el=visible[i]; el.classList.add('active'); input.setAttribute('aria-activedescendant', el.id);
+      const r=el.getBoundingClientRect(), lr=list.getBoundingClientRect();
+      if(r.top<lr.top) list.scrollTop-= (lr.top-r.top);
+      if(r.bottom>lr.bottom) list.scrollTop+= (r.bottom-lr.bottom);
+    }else{ input.removeAttribute('aria-activedescendant'); }
+  }
+  function rebuildVisible(){
+    const q=(input.value||'').toLowerCase(); visible=[];
+    optsAll().forEach(btn=>{
+      const show=btn.textContent.toLowerCase().includes(q);
+      btn.style.display=show?'':'none'; btn.setAttribute('aria-selected','false');
+      if(show) visible.push(btn);
+    });
+    setActive(visible.length?0:-1);
+  }
+  function commit(btn){
+    if(!btn) return;
+    hid.value=btn.dataset.id; input.value=btn.textContent.trim();
+    visible.forEach(o=>o.setAttribute('aria-selected', o===btn?'true':'false'));
+    closeList();
+  }
+
+  input.addEventListener('input', ()=>{ openList(); rebuildVisible(); });
+  input.addEventListener('focus', openList);
+  input.addEventListener('blur', ()=> setTimeout(()=>{ if(!list.contains(document.activeElement)) closeList(); }, 120));
+  input.addEventListener('keydown', e=>{
+    if(e.key==='ArrowDown'){ e.preventDefault(); if(list.hidden) openList(); if(visible.length) setActive(Math.min(activeIndex+1, visible.length-1)); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); if(visible.length) setActive(Math.max(activeIndex-1, 0)); }
+    else if(e.key==='Enter'){ if(!list.hidden && activeIndex>=0){ e.preventDefault(); commit(visible[activeIndex]); } }
+    else if(e.key==='Escape'){ closeList(); }
+  });
+  list.addEventListener('mousedown', e=>e.preventDefault());
+  list.addEventListener('click', e=>{ const btn=e.target.closest('[role="option"]'); if(btn) commit(btn); });
+})();
+
+// Enable Bootstrap popovers for truncated Description/Remarks
+document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el=>{
+  new bootstrap.Popover(el, {container:'body', html:false});
+});
+</script>
+{% endblock %}

@@ -1,0 +1,44 @@
+:root{
+  /* Replace with exact sampled values when ready */
+  --brand-gold:#C89A2B;
+  --brand-black:#1C1C1C;
+  --brand-white:#FFFFFF;
+
+  --link-color:var(--brand-gold);
+  --btn-bg:var(--brand-gold);
+  --btn-text:var(--brand-black);
+  --header-bg:var(--brand-black);
+  --header-text:var(--brand-white);
+  --card-border:#E6E6E6;
+  --muted:#6c757d;
+}
+
+/* Base */
+body{background-color:#f8f9fa;font-family:"Segoe UI", Roboto, sans-serif;color:var(--brand-black);}
+.container{margin-top:2rem;}
+
+/* Navbar */
+.navbar{box-shadow:0 2px 6px rgba(0,0,0,0.1);border-bottom:4px solid var(--brand-gold);}
+.navbar-brand img{height:40px}
+.navbar-light.bg-white{background-color:var(--header-bg)!important;}
+.navbar-light .navbar-brand,.navbar-light .nav-link{color:var(--header-text)!important;}
+.nav-link.active{font-weight:600;color:var(--brand-gold)!important;}
+
+/* Links */
+a{color:var(--link-color)}
+a:hover{text-decoration:underline}
+
+/* Buttons */
+.btn-primary{background-color:var(--btn-bg)!important;border-color:var(--btn-bg)!important;color:var(--btn-text)!important;}
+.btn-primary:hover{filter:brightness(1.1);}
+.btn-outline-primary{color:var(--brand-gold)!important;border-color:var(--brand-gold)!important;}
+.btn-outline-primary:hover{background:var(--brand-gold)!important;color:var(--brand-black)!important;}
+
+/* Dedicated black Edit button (use class="btn btn-edit") */
+.btn-edit{background-color:var(--brand-black)!important;border-color:var(--brand-black)!important;color:var(--brand-white)!important;}
+.btn-edit:hover{filter:brightness(1.12);}
+
+/* Cards, alerts, footer */
+.alert{border-radius:.75rem;box-shadow:0 2px 8px rgba(0,0,0,0.05);}
+.card{border:1px solid var(--card-border);border-radius:.75rem;}
+footer{margin-top:3rem;padding:1rem 0;text-align:center;font-size:.9rem;color:var(--muted);border-top:1px solid #dee2e6;background:#fff;}

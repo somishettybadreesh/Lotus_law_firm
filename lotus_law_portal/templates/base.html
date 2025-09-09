@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Lotus Law Associates</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Tom Select CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
+
+  <!-- Brand stylesheet (put at static/css/brand.css) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/brand.css') }}">
+
+  <!-- Favicons (store files under static/brand/) -->
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='Lotus.png') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='Lotus.png') }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='Lotus.png') }}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='Lotus.png') }}">
+  <meta name="theme-color" content="#1C1C1C">
+</head>
+<body>
+  <!-- Navbar (dark so logo/text stay visible even if CSS fails) -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top" style="border-bottom:4px solid #C89A2B;">
+    <div class="container-fluid">
+      <a class="navbar-brand d-flex align-items-center" href="{{ url_for('dashboard') }}">
+        <!-- Logo file: static/brand/Lotus.png (or .svg) -->
+        <img src="{{ url_for('static', filename='Lotus.png') }}" alt="" class="me-2" height="45
+        <span class="fw-bold">LOTUS LAW ASSOCIATES</span>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+              data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link{% if request.endpoint == 'dashboard' %} active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link{% if request.endpoint == 'list_clients' %} active{% endif %}" href="{{ url_for('list_clients') }}">Clients</a></li>
+          <li class="nav-item"><a class="nav-link{% if request.endpoint == 'bills' %} active{% endif %}" href="{{ url_for('bills') }}">Bills</a></li>
+          <li class="nav-item"><a class="nav-link{% if request.endpoint == 'receipts' %} active{% endif %}" href="{{ url_for('receipts') }}">Receipts</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Flash Messages -->
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+
+  <footer>&copy; {{ current_year if current_year else "2025" }} Lotus Law Associates · All rights reserved</footer>
+
+  <!-- JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('[data-bs-toggle="popover"]').forEach(function (el) {
+        new bootstrap.Popover(el, {container:'body', html:false, trigger:'focus'});
+      });
+    });
+  </script>
+</body>
+</html>

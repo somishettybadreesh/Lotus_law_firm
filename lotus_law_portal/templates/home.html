@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Branded hero -->
+<div class="py-4 px-3 mb-4" style="background: var(--brand-black); color: var(--brand-white); border-radius: .75rem;">
+  <div class="d-flex align-items-center">
+    <img src="{{ url_for('static', filename='Lotus.png') }}" alt="Lotus" height="100" class="me-3">
+    <div>
+      <h1 class="h3 mb-1">Recon Portal</h1>
+      <div class="text-muted" style="color:#d8d8d8 !important;">Legal billing and reconciliation</div>
+    </div>
+  </div>
+</div>
+
+<div class="container mt-4">
+  <h1>Welcome to Recon Portal</h1>
+  <p class="lead">Manage your financial reconciliation efficiently with our intuitive tools.</p>
+
+  <div class="row mt-4 g-3">
+    <div class="col-md-4">
+      <div class="card"><div class="card-body">
+        <h5 class="card-title">Dashboard</h5>
+        <p class="card-text">View reconciliation status and financial summaries.</p>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Go to Dashboard</a>
+      </div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="card"><div class="card-body">
+        <h5 class="card-title">Clients</h5>
+        <p class="card-text">Manage your client list and details.</p>
+        <a href="{{ url_for('list_clients') }}" class="btn btn-primary">Manage Clients</a>
+      </div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="card"><div class="card-body">
+        <h5 class="card-title">Bills</h5>
+        <p class="card-text">Add and edit bills for your clients.</p>
+        <a href="{{ url_for('bills') }}" class="btn btn-primary">Manage Bills</a>
+      </div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="card"><div class="card-body">
+        <h5 class="card-title">Receipts</h5>
+        <p class="card-text">Track receipts and payments.</p>
+        <a href="{{ url_for('receipts') }}" class="btn btn-primary">Manage Receipts</a>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="mt-5">
+    <p>Current date and time: <span id="current-time">{{ current_time.strftime('%I:%M %p IST on %B %d, %Y') if current_time else '' }}</span></p>
+  </div>
+</div>
+
+<script>
+  function updateTime() {
+    const now = new Date().toLocaleString('en-US', {
+      timeZone: 'Asia/Kolkata', hour12: true, hour: 'numeric', minute: 'numeric',
+      month: 'long', day: 'numeric', year: 'numeric'
+    });
+    const el = document.getElementById('current-time');
+    if (el) el.textContent = now.replace(' at', ' IST on');
+  }
+  updateTime();
+  setInterval(updateTime, 1000);
+</script>
+{% endblock %}

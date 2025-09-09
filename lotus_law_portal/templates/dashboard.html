@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>Dashboard</h3>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-3">
+    <label class="form-label">Client</label>
+    <input name="client" class="form-control" value="{{ filters.client or '' }}" placeholder="Client name">
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">From</label>
+    <input type="date" name="from" value="{{ filters.dfrom or '' }}" class="form-control">
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">To</label>
+    <input type="date" name="to" value="{{ filters.dto or '' }}" class="form-control">
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">Status</label>
+    <select name="status" class="form-select">
+      <option value="" {{ ''==filters.status and 'selected' or '' }}>All</option>
+      <option value="Pending" {{ 'Pending'==filters.status and 'selected' or '' }}>Pending</option>
+      <option value="Paid" {{ 'Paid'==filters.status and 'selected' or '' }}>Paid</option>
+      <option value="Overpaid" {{ 'Overpaid'==filters.status and 'selected' or '' }}>Overpaid</option>
+    </select>
+  </div>
+  <div class="col-md-3 d-flex align-items-end">
+    <input type="hidden" name="page" value="1">
+    <input type="hidden" name="per_page" value="{{ pagination.per_page }}">
+    <button class="btn btn-primary me-2">Apply</button>
+    <a class="btn btn-outline-secondary" href="{{ url_for('export_reconciliation', fmt='csv') }}">Export CSV</a>
+    <a class="btn btn-outline-secondary ms-2" href="{{ url_for('export_reconciliation', fmt='xlsx') }}">Export Excel</a>
+  </div>
+</form>
+
+<div class="row mb-3">
+  <div class="col-md-2"><div class="card"><div class="card-body"><div class="fw-bold">Total Bills</div><div>₹ {{ "%.2f"|format(totals.total_bills) }}</div></div></div></div>
+  <div class="col-md-2"><div class="card"><div class="card-body"><div class="fw-bold">Total Paid</div><div>₹ {{ "%.2f"|format(totals.total_paid) }}</div></div></div></div>
+  <div class="col-md-2"><div class="card"><div class="card-body"><div class="fw-bold">Total Balance</div><div>₹ {{ "%.2f"|format(totals.total_balance) }}</div></div></div></div>
+  <div class="col-md-2"><div class="card"><div class="card-body"><div class="fw-bold">Pending</div><div>{{ totals.count_pending }}</div></div></div></div>
+  <div class="col-md-2"><div class="card"><div class="card-body"><div class="fw-bold">Paid</div><div>{{ totals.count_paid }}</div></div></div></div>
+  <div class="col-md-2"><div class="card"><div class="card-body"><div class="fw-bold">Overpaid</div><div>{{ totals.count_overpaid }}</div></div></div></div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-sm table-striped">
+    <thead>
+      <tr>
+        <th>Bill Date</th><th>Bill No</th><th>Client</th><th>Bill Amount</th><th>Paid</th><th>Balance</th><th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.bill_date }}</td>
+        <td>{{ r.bill_no }}</td>
+        <td>{{ r.client_name }}</td>
+        <td>{{ "%.2f"|format(r.amount) }}</td>
+        <td>{{ "%.2f"|format(r.paid_amount) }}</td>
+        <td>{{ "%.2f"|format(r.balance) }}</td>
+        <td>
+          <span class="badge {% if r.status=='Paid' %}bg-success{% elif r.status=='Pending' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+            {{ r.status }}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="d-flex align-items-center justify-content-between">
+  <div class="text-muted">
+    Showing {{ pagination.start_idx }}–{{ pagination.end_idx }} out of {{ pagination.total }}
+  </div>
+  <div class="d-flex align-items-center gap-3">
+    <form method="get" class="d-flex align-items-center">
+      <input type="hidden" name="client" value="{{ filters.client or '' }}">
+      <input type="hidden" name="from" value="{{ filters.dfrom or '' }}">
+      <input type="hidden" name="to" value="{{ filters.dto or '' }}">
+      <input type="hidden" name="status" value="{{ filters.status or '' }}">
+      <span class="me-2">Items per page:</span>
+      <select name="per_page" class="form-select form-select-sm" onchange="this.form.submit()">
+        {% for n in [15,25,50,100] %}
+          <option value="{{ n }}" {% if n == pagination.per_page %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+      <input type="hidden" name="page" value="1">
+    </form>
+
+    <nav aria-label="Reconciliation pages">
+      <ul class="pagination mb-0">
+        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+          <a class="page-link" href="{{ pagination.prev_url or '#' }}">Previous</a>
+        </li>
+        {% for p in range(1, pagination.pages + 1) %}
+          {% set link = url_for('dashboard', client=filters.client or '', status=filters.status or '', from=filters.dfrom or '', to=filters.dto or '', page=p, per_page=pagination.per_page) %}
+          <li class="page-item {% if p == pagination.page %}active{% endif %}">
+            <a class="page-link" href="{{ link }}">{{ p }}</a>
+          </li>
+        {% endfor %}
+        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+          <a class="page-link" href="{{ pagination.next_url or '#' }}">Next</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div>
+{% endblock %}
