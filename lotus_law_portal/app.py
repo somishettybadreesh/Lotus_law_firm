@@ -613,6 +613,35 @@ def import_receipts_now():
         flash(f"Missing columns: {', '.join(missing)}", "danger")
         return redirect(url_for("receipts"))
 
+    # Normalize Bill No once
+    df['Bill No'] = df['Bill No'].astype(str).str.strip()
+
+    # 1) Duplicates within the uploaded file (all occurrences)
+    dups_in_file = (
+        df.loc[df['Bill No'].duplicated(keep=False), 'Bill No']
+        .dropna().astype(str).str.strip().unique().tolist()
+    )
+
+    # 2) Overlaps with existing receipts in DB (one receipt per bill rule)
+    file_bill_nos = df['Bill No'].dropna().astype(str).str.strip().tolist()
+    existing_bills = {
+        bn for (bn,) in db.session.query(Receipt.bill_no)
+            .filter(Receipt.bill_no.in_(file_bill_nos)).all()
+    }
+
+    # Combine conflicts and block upload if any
+    conflicts = sorted(set(dups_in_file) | existing_bills)
+    if conflicts:
+        preview = ", ".join(conflicts[:5])
+        flash(
+            f"Upload blocked: multiple receipts per Bill No are not allowed. "
+            f"Conflicts for Bill Nos: {preview}{' …' if len(conflicts) > 5 else ''}. "
+            f"No rows were imported.",
+            "danger"
+        )
+        return redirect(url_for("receipts"))
+
+    # If no conflicts, proceed with the usual insert loop...
     created = 0
     with db.session.begin():
         for _, row in df.iterrows():
@@ -620,14 +649,12 @@ def import_receipts_now():
             client = Client.query.filter(db.func.lower(Client.name) == cname.lower()).first()
             if not client:
                 continue
-
             bill_no = str(row.get("Bill No") or "").strip()
             paid = float(row.get("Paid") or 0)
             tds = float(row.get("TDS") or 0)
             total = paid + tds
             if not bill_no or total <= 0:
                 continue
-
             db.session.add(Receipt(
                 receipt_ref=str(row.get("Receipt Ref") or "").strip(),
                 receipt_date=parse_date(str(row.get("Receipt Date") or "")),
